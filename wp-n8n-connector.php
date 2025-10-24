@@ -12,3 +12,6 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit; // Exit if accessed directly.
 } 
 ?>   
+
+<h2>n8n Connector Plugin</h2>
+<p>This plugin allows you to connect your WordPress site with n8n workflows.</p>
