@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/dafeeedf/public_html/wp-content/plugins/aura-n8n-to-wordpress-connection-plugin
+    - /bin/cp -r * $DEPLOYPATH
