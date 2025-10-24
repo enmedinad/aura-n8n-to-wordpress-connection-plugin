@@ -1,0 +1,22 @@
+name: Deploy to cPanel
+
+on:
+  push:
+    branches: [ "main" ]   # o la rama que uses
+
+jobs:
+  deploy:
+    runs-on: linux-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Upload via SFTP
+        uses: wlixcc/SFTP-Deploy-Action@v1.0
+        with:
+          server: ${{ secrets.SFTP_SERVER }}
+          username: ${{ secrets.SFTP_NAME }}
+          password: ${{ secrets.SFTP_PASS }}
+          local_path: "./"
+          remote_path: "/public_html/wp-content/plugins/aura-n8n-to-wordpress-connection-plugin"
+          sftp_args: "-o StrictHostKeyChecking=no"
