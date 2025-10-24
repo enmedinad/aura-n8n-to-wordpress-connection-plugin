@@ -2,18 +2,22 @@ name: Deploy to cPanel
 
 on:
   push:
-    branches: ["main"] # o la rama que uses
+    branches: ["main"]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Upload via SFTP
         uses: wlixcc/SFTP-Deploy-Action@v1.0
         with:
           server: ${{ secrets.SFTP_SERVER }}
-          username: ${{ secrets.SFTP_USER }}
+          username: ${{ secrets.SFTP_USER }}   # aquí va tu usuario SSH principal
           port: 22
           ssh_private_key: ${{ secrets.SFTP_KEY }}
+
           local_path: "./"
           remote_path: "/public_html/wp-content/plugins/aura-n8n-to-wordpress-connection-plugin"
