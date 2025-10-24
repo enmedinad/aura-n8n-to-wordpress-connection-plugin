@@ -13,7 +13,7 @@ jobs:
         with:
           server: ${{ secrets.SFTP_SERVER }}
           username: ${{ secrets.SFTP_USER }}
-          port: 22
+          port: 21
           ssh_private_key: ${{ secrets.SFTP_KEY }}
           local_path: "./"
           remote_path: "/public_html/wp-content/plugins/aura-n8n-to-wordpress-connection-plugin"
