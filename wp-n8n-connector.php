@@ -10,5 +10,5 @@ License: Private Use Only
 // Prevent direct access to the file
 if ( ! defined( 'ABSPATH' ) ) {
     exit; // Exit if accessed directly.
-}
+} 
 ?>
