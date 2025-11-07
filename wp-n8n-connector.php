@@ -1,17 +1,26 @@
-<!-- 
-Plugin Name: n8n Connector
-Description: A WordPress plugin to connect with n8n workflows. 
-Author: Enzo Medina.
-Version: 0.0.1a
-License: Private Use Only
--->
-
 <?php
-// Prevent direct access to the file
-if ( ! defined( 'ABSPATH' ) ) {
-    exit; // Exit if accessed directly.
-} 
-?>   
+/*
+Plugin Name: n8n Connector
+Description: Plugin standalone con front-end en React , Conexion con N8N. 
+Author: Enzo Medina.
+Version: 0.0.2a
+License: Private Use Only
+*/
 
-<h2>n8n Connector Plugin</h2>
-<p>This plugin allows you to connect your WordPress site with n8n workflows.</p>
+if ( ! defined( 'ABSPATH' ) ) exit; // Seguridad
+
+// Incluir funciones de carga
+require_once plugin_dir_path( __FILE__ ) . 'includes/enqueue.php';
+
+// Shortcode para renderizar el contenedor React
+function mi_plugin_shortcode() {
+    return '<div id="mi-plugin-root"></div>';
+}
+add_shortcode('mi_plugin', 'mi_plugin_shortcode');
+
+
+
+
+
+
+?>
