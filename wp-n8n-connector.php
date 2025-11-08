@@ -35,12 +35,12 @@ function wp_n8n_add_admin_menu() {
 }
 
 // Cargar estilos del admin
-add_action('admin_enqueue_scripts', 'wp_n8n_admin_assets');
-function wp_n8n_admin_assets($hook) {
-    if ($hook === 'toplevel_page_wp-n8n-connector') {
-        wp_enqueue_style('wp-n8n-admin', WP_N8N_CONNECTOR_URL . 'admin/admin-styles.css');
-    }
-}
-
-
+add_action('admin_enqueue_scripts', function() {
+    wp_enqueue_style(
+        'wp-n8n-admin',
+        WP_N8N_CONNECTOR_URL . 'admin/admin-styles.css',
+        array(),
+        '0.1'
+    );
+});
 ?>
