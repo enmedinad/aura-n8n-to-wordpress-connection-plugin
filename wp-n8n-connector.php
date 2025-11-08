@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: n8n Connector
-Description: Plugin standalone con front-end en React , Conexion con N8N. 
+Description: Plugin que permite conectar rapidamente con N8N en Wordpress. 
 Author: Enzo Medina.
 Version: 0.0.2a
 License: Private Use Only
