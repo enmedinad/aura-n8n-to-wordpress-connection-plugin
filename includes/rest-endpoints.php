@@ -1,9 +1,9 @@
 <?php
 /*
-Plugin Name: RealState Plugin automation N8N
-Description: Plugin que permite conectar rapidamente con N8N en Wordpress. 
+Plugin Part: Rest Endpoints
+Description: Define los endpoints REST personalizados para interactuar con los Custom Post Types (CPT) de Propiedades, Dueños y Leads. Permite operaciones CRUD y consultas específicas para gestionar los datos inmobiliarios.
 Author: Enzo Medina.
-Version: 0.0.1 Starter
+Version: 0.0.2 Starter
 License: Private Use Only
 */
 

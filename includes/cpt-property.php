@@ -1,9 +1,9 @@
 <?php
 /*
-Plugin Name: RealState Plugin automation N8N
-Description: Plugin que permite conectar rapidamente con N8N en Wordpress. 
+Plugin Part: Custom Post Type Property.
+Description: Define el Custom Post Type (CPT) para Propiedades, sus taxonomías asociadas (Amenities, Servicios, Muebles) y los metadatos relevantes para cada propiedad.
 Author: Enzo Medina.
-Version: 0.0.1 Starter
+Version: 0.0.2a
 License: Private Use Only
 */
 

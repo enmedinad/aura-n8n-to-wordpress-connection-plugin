@@ -15,8 +15,8 @@ define('RE_CORE_URL', plugin_dir_url(__FILE__));
 // Cargar archivos necesarios
 require_once RE_CORE_PATH . 'includes/helpers.php';
 require_once RE_CORE_PATH . 'includes/cpt-property.php';
-require_once RE_CORE_PATH . 'includes/cpt-owner.php';
-require_once RE_CORE_PATH . 'includes/cpt-lead.php';
+require_once RE_CORE_PATH . 'includes/cpt-owners.php';
+require_once RE_CORE_PATH . 'includes/cpt-leads.php';
 require_once RE_CORE_PATH . 'includes/rest-endpoints.php';
 
 // Opcional: CSS inline para el admin si tu servidor bloquea archivos .css
