@@ -1,0 +1,28 @@
+Plugin Name: RealState Plugin automation N8N
+Description: Plugin que permite conectar rapidamente con N8N en Wordpress. 
+Author: Enzo Medina.
+Version: 0.0.2a
+License: Private Use Only
+
+Info Documentation:
+
+
+//CPT-LEADS
+Encargado de generar LEADS en Wordpress a traves de N8N para futura gestion Humana
+(Visitas, llamadas, correos, etc)
+
+//CPT-PROPERTY
+Encargado de leer y gestionar las propiedades de Wordpress para enviarlas a N8N y 
+ser procesadas por la IA para recomendar o responder consultas.
+
+//CPT-OWNERS
+Dueños de Propiedades, Permitira confirmar disponibilidades y futuros seguimientos en 
+caso de ser necesarios, como Visitas o llamadas.
+
+//REST ENDPOINTS
+Encargado de recibir y enviar datos entre N8N y Wordpress, permitiendo la automatizacion
+de procesos y gestion de informacion.
+
+//HELPERS
+Funciones auxiliares que facilitan la interaccion entre los diferentes 
+componentes del plugin,mejorando la eficiencia y reduciendo la redundancia de codigo.
