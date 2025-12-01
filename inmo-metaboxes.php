@@ -85,7 +85,9 @@ class Inmo_Metaboxes {
         
         <div class="inmo-gallery-box">
             <input type="hidden" id="_inmo_galeria" name="_inmo_galeria" value="<?php echo esc_attr($ids); ?>">
-            <button class="button inmo-upload-gallery button-large" style="width:100%;">📂 Gestionar Galería</button>
+            
+            <button type="button" class="button inmo-upload-gallery button-large" style="width:100%;">📂 Gestionar Galería</button>
+            
             <div class="inmo-gallery-preview" style="margin-top:10px;">
                 <?php if($count > 0): ?>
                     <p style="color:green; font-weight:bold;">✅ <?php echo $count; ?> imágenes cargadas</p>
