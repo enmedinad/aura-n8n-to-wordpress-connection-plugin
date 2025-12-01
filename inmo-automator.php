@@ -11,6 +11,9 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 if ( file_exists( plugin_dir_path( __FILE__ ) . 'inmo-metaboxes.php' ) ) {
     require_once plugin_dir_path( __FILE__ ) . 'inmo-metaboxes.php';
 }
+if ( file_exists( plugin_dir_path( __FILE__ ) . 'inmo-columns.php' ) ) {
+    require_once plugin_dir_path( __FILE__ ) . 'inmo-columns.php';
+}
 if ( file_exists( plugin_dir_path( __FILE__ ) . 'inmo-api.php' ) ) {
     require_once plugin_dir_path( __FILE__ ) . 'inmo-api.php';
 }
