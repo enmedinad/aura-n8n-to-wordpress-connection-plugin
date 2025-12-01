@@ -11,32 +11,36 @@ class Inmo_Metaboxes {
     }
 
     public function enqueue_media_script() {
-        if ( 'propiedad' === get_post_type() ) {
-            wp_enqueue_media();
-            // Pequeño script inline para manejar el botón de subida de galería
-            wp_add_inline_script( 'media-upload', "
-                jQuery(document).ready(function($){
-                    $('.inmo-upload-gallery').click(function(e) {
-                        e.preventDefault();
-                        var button = $(this);
-                        var custom_uploader = wp.media({
-                            title: 'Seleccionar Imágenes para la Galería',
-                            button: { text: 'Usar estas imágenes' },
-                            multiple: true
-                        }).on('select', function() {
-                            var attachment_ids = [];
-                            var selection = custom_uploader.state().get('selection');
-                            selection.map( function( attachment ) {
-                                attachment = attachment.toJSON();
-                                attachment_ids.push(attachment.id);
-                            });
-                            $('#_inmo_galeria').val(attachment_ids.join(','));
-                            $('.inmo-gallery-preview').text('Imágenes seleccionadas: ' + selection.length);
-                        }).open();
-                    });
-                });
-            ");
+        global $post;
+        // Solo cargar si estamos editando una propiedad
+        if ( ! $post || 'propiedad' !== $post->post_type ) {
+            return;
         }
+
+        wp_enqueue_media();
+        // Pequeño script inline para manejar el botón de subida de galería
+        wp_add_inline_script( 'media-upload', "
+            jQuery(document).ready(function($){
+                $('.inmo-upload-gallery').click(function(e) {
+                    e.preventDefault();
+                    var button = $(this);
+                    var custom_uploader = wp.media({
+                        title: 'Seleccionar Imágenes para la Galería',
+                        button: { text: 'Usar estas imágenes' },
+                        multiple: true
+                    }).on('select', function() {
+                        var attachment_ids = [];
+                        var selection = custom_uploader.state().get('selection');
+                        selection.map( function( attachment ) {
+                            attachment = attachment.toJSON();
+                            attachment_ids.push(attachment.id);
+                        });
+                        $('#_inmo_galeria').val(attachment_ids.join(','));
+                        $('.inmo-gallery-preview').text('Imágenes seleccionadas: ' + selection.length);
+                    }).open();
+                });
+            });
+        ");
     }
 
     // 1. REGISTRAR CAJAS
@@ -50,7 +54,7 @@ class Inmo_Metaboxes {
         // C. Lista de Interesados (Solo lectura)
         add_meta_box( 'inmo_leads_list', '👥 Clientes Interesados (Leads)', array( $this, 'render_leads_list' ), 'propiedad', 'normal', 'low' );
 
-        // D. Cajas para Dueños y Clientes (Se mantienen igual)
+        // D. Cajas para Dueños y Clientes
         add_meta_box( 'inmo_dueno_data', 'Información del Dueño', array( $this, 'render_dueno_data' ), 'dueno', 'normal', 'high' );
         add_meta_box( 'inmo_cliente_data', 'Gestión del Lead', array( $this, 'render_cliente_data' ), 'cliente', 'side', 'high' );
     }
@@ -63,8 +67,11 @@ class Inmo_Metaboxes {
         $dueno_id = get_post_meta( $post->ID, '_inmo_dueno_id', true );
         $tipo_prop = get_post_meta( $post->ID, '_inmo_tipo_propiedad', true );
         $tipo_oper = get_post_meta( $post->ID, '_inmo_tipo_operacion', true );
-        $garantias = get_post_meta( $post->ID, '_inmo_garantias', true ) ?: array(); // Array
-        $docs      = get_post_meta( $post->ID, '_inmo_documentacion', true ) ?: array(); // Array
+        $garantias = get_post_meta( $post->ID, '_inmo_garantias', true );
+        if ( ! is_array( $garantias ) ) $garantias = array();
+
+        $docs = get_post_meta( $post->ID, '_inmo_documentacion', true );
+        if ( ! is_array( $docs ) ) $docs = array();
         
         // Datos Ficha Técnica
         $m2 = get_post_meta( $post->ID, '_inmo_m2', true );
@@ -74,7 +81,7 @@ class Inmo_Metaboxes {
         $habitaciones = get_post_meta( $post->ID, '_inmo_habitaciones', true );
 
         // Listas para selects/checkboxes
-        $duenos_list = get_posts( array( 'post_type' => 'dueno', 'numberposts' => -1 ) );
+        $duenos_list = get_posts( array( 'post_type' => 'dueno', 'numberposts' => -1, 'post_status' => 'any' ) );
         $tipos_prop_opt = ['Apartamento', 'Casa', 'Terreno', 'Local Comercial', 'Oficina', 'Campo'];
         $tipos_oper_opt = ['Venta', 'Alquiler', 'Traspaso', 'Venta y Alquiler'];
         $garantias_opt = ['ANDA', 'Contaduría', 'Aseguradoras (Porto/Sura)', 'Depósito BHU', 'Propiedad'];
@@ -193,7 +200,7 @@ class Inmo_Metaboxes {
         <?php
     }
 
-    // --- RENDER: LISTA DE LEADs (IGUAL QUE ANTES) ---
+    // --- RENDER: LISTA DE LEADs ---
     public function render_leads_list( $post ) {
         $leads = get_posts( array(
             'post_type'  => 'cliente',
@@ -208,19 +215,28 @@ class Inmo_Metaboxes {
         foreach ( $leads as $lead ) {
             $tel = get_post_meta( $lead->ID, '_cliente_telefono', true );
             $st = get_post_meta( $lead->ID, '_cliente_status_proceso', true );
-            $agente = get_userdata( get_post_meta( $lead->ID, '_cliente_agente', true ) );
+            $agente_id = get_post_meta( $lead->ID, '_cliente_agente', true );
+            
+            $agente_nombre = '-';
+            if ( $agente_id ) {
+                $user_info = get_userdata( $agente_id );
+                if ( $user_info ) {
+                    $agente_nombre = $user_info->display_name;
+                }
+            }
+
             echo '<tr>
                 <td>' . esc_html( $lead->post_title ) . '</td>
                 <td>' . esc_html( $tel ) . '</td>
                 <td>' . esc_html( $st ) . '</td>
-                <td>' . ($agente ? $agente->display_name : '-') . '</td>
+                <td>' . esc_html( $agente_nombre ) . '</td>
                 <td><a href="' . get_edit_post_link( $lead->ID ) . '" class="button button-small">Ver Ficha</a></td>
             </tr>';
         }
         echo '</tbody></table>';
     }
 
-    // --- RENDER: DUEÑO Y CLIENTE (MANTENER CÓDIGO SIMPLE ANTERIOR) ---
+    // --- RENDER: DUEÑO Y CLIENTE ---
     public function render_dueno_data( $post ) {
         $telefono = get_post_meta( $post->ID, '_dueno_telefono', true );
         wp_nonce_field( 'inmo_save_meta', 'inmo_nonce' );
@@ -232,7 +248,6 @@ class Inmo_Metaboxes {
         $status  = get_post_meta( $post->ID, '_cliente_status_proceso', true );
         $telefono = get_post_meta( $post->ID, '_cliente_telefono', true );
         
-        // Select de Propiedades
         $props = get_posts(array('post_type'=>'propiedad','numberposts'=>50)); 
         wp_nonce_field( 'inmo_save_meta', 'inmo_nonce' );
         
@@ -249,11 +264,16 @@ class Inmo_Metaboxes {
 
     // --- GUARDAR DATOS ---
     public function save_custom_data( $post_id ) {
+        // 1. Verificaciones de seguridad básicas
         if ( ! isset( $_POST['inmo_nonce'] ) || ! wp_verify_nonce( $_POST['inmo_nonce'], 'inmo_save_meta' ) ) return;
         if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
+        if ( ! current_user_can( 'edit_post', $post_id ) ) return;
+        
+        // 2. Verificar que existe post_type para evitar Notice/Error
+        if ( ! isset( $_POST['post_type'] ) ) return;
 
+        // Guardar Propiedad
         if ( 'propiedad' === $_POST['post_type'] ) {
-            // Textos simples
             $fields = ['_inmo_dueno_id', '_inmo_tipo_propiedad', '_inmo_tipo_operacion', '_inmo_m2', 
                        '_inmo_dormitorios', '_inmo_banos', '_inmo_gastos_comunes', '_inmo_habitaciones', 
                        '_inmo_nota_interna', '_inmo_galeria'];
@@ -262,18 +282,19 @@ class Inmo_Metaboxes {
                 if(isset($_POST[$f])) update_post_meta($post_id, $f, sanitize_text_field($_POST[$f]));
             }
 
-            // Arrays (Checkbox)
             $checks = ['_inmo_garantias', '_inmo_documentacion'];
             foreach($checks as $c) {
                 $val = ( isset($_POST[$c]) && is_array($_POST[$c]) ) ? $_POST[$c] : array();
-                update_post_meta($post_id, $c, $val); // Guarda el array tal cual
+                update_post_meta($post_id, $c, $val);
             }
         }
 
+        // Guardar Dueño
         if ( 'dueno' === $_POST['post_type'] ) {
             if(isset($_POST['_dueno_telefono'])) update_post_meta( $post_id, '_dueno_telefono', sanitize_text_field( $_POST['_dueno_telefono'] ) );
         }
 
+        // Guardar Cliente
         if ( 'cliente' === $_POST['post_type'] ) {
             if(isset($_POST['_cliente_propiedad_id'])) update_post_meta( $post_id, '_cliente_propiedad_id', sanitize_text_field( $_POST['_cliente_propiedad_id'] ) );
             if(isset($_POST['_cliente_status_proceso'])) update_post_meta( $post_id, '_cliente_status_proceso', sanitize_text_field( $_POST['_cliente_status_proceso'] ) );
