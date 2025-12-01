@@ -10,6 +10,7 @@ class Inmo_Metaboxes {
         add_filter( 'tiny_mce_before_init', array( $this, 'custom_editor_placeholder' ) );
     }
 
+    // --- CONFIGURACIÓN Y SCRIPTS ---
     public function custom_editor_placeholder( $settings ) {
         $settings['placeholder'] = 'Esta es la Descripción que leerá la IA y los clientes. Detallar Solo lo Clave.';
         return $settings;
@@ -18,27 +19,30 @@ class Inmo_Metaboxes {
     public function enqueue_scripts() {
         global $post;
         if ( ! $post ) return;
-        // Carga de estilos y scripts solo si es necesario
         if ( 'propiedad' === $post->post_type ) wp_enqueue_media();
-        
         ?>
         <script type="text/javascript">
         jQuery(document).ready(function($){
-            // Script Galería Propiedades
+            // Script Galería Sidebar
             $('.inmo-upload-gallery').click(function(e) {
                 e.preventDefault();
-                var custom_uploader = wp.media({ title: 'Seleccionar Imágenes', button: { text: 'Usar' }, multiple: true })
+                var custom_uploader = wp.media({ title: 'Seleccionar Imágenes Adicionales', button: { text: 'Añadir a Galería' }, multiple: true })
                 .on('select', function() {
                     var ids = [];
                     custom_uploader.state().get('selection').map( function( attachment ) { ids.push(attachment.toJSON().id); });
                     $('#_inmo_galeria').val(ids.join(','));
-                    $('.inmo-gallery-preview').text('✅ ' + ids.length + ' imágenes seleccionadas');
+                    
+                    // Preview simple en sidebar
+                    var html = '';
+                    if(ids.length > 0) {
+                        html = '<p style="color:green; font-weight:bold;">✅ ' + ids.length + ' imágenes seleccionadas</p>';
+                        html += '<small>Recuerda guardar para ver los cambios.</small>';
+                    }
+                    $('.inmo-gallery-preview').html(html);
                 }).open();
             });
-            // Script Refrescar Dueños
             $('#btn-refresh-duenos').click(function(e){
-                e.preventDefault();
-                if(confirm('Guardar cambios antes de recargar?')) location.reload();
+                e.preventDefault(); if(confirm('Guardar cambios antes?')) location.reload();
             });
         });
         </script>
@@ -50,70 +54,96 @@ class Inmo_Metaboxes {
             .inmo-field label { font-weight: bold; display: block; margin-bottom: 5px; color: #444; font-size: 0.9em; }
             .inmo-field select, .inmo-field input[type="text"], .inmo-field input[type="number"], .inmo-field input[type="date"] { width: 100%; }
             .inmo-checks label { display: block; margin-bottom: 4px; font-weight: normal; font-size: 0.9em; }
-            
-            /* Estilos específicos para Dueños */
-            .dueno-prop-card { border-left: 5px solid #2271b1; background: #f6f7f7; padding: 10px; margin-bottom: 10px; }
             .dueno-status-alert { background: #fff8e5; border: 1px solid #f0c33c; padding: 10px; border-radius: 5px; margin-top: 10px; }
+            /* Estilo especial para la galería en sidebar */
+            .inmo-gallery-box { text-align: center; background: #f0f0f1; padding: 10px; border: 1px dashed #8c8f94; margin-top: 10px; }
         </style>
         <?php
     }
 
     public function add_custom_boxes() {
+        // PRINCIPAL
         add_meta_box( 'inmo_main_data', '🏢 Gestión Integral de la Propiedad', array( $this, 'render_main_data' ), 'propiedad', 'normal', 'high' );
-        add_meta_box( 'inmo_gallery_data', '📷 Galería y Notas', array( $this, 'render_gallery_data' ), 'propiedad', 'normal', 'default' );
         add_meta_box( 'inmo_leads_list', '👥 Interesados', array( $this, 'render_leads_list' ), 'propiedad', 'normal', 'low' );
         
-        // CAJA DE DUEÑOS ACTUALIZADA
-        add_meta_box( 'inmo_dueno_data', '👤 Ficha del Dueño y Disponibilidad', array( $this, 'render_dueno_data' ), 'dueno', 'normal', 'high' );
+        // SIDEBAR (LATERAL)
+        // Galería movida al lateral, prioridad 'low' para que salga bajo la Imagen Destacada (Portada)
+        add_meta_box( 'inmo_gallery_side', '📷 Galería de Imágenes (10+)', array( $this, 'render_gallery_side' ), 'propiedad', 'side', 'low' );
         
+        // DUEÑOS Y CLIENTES
+        add_meta_box( 'inmo_dueno_data', '👤 Ficha del Dueño', array( $this, 'render_dueno_data' ), 'dueno', 'normal', 'high' );
         add_meta_box( 'inmo_cliente_data', 'Datos Lead', array( $this, 'render_cliente_data' ), 'cliente', 'side', 'high' );
     }
 
-    // --- RENDERIZADORES DE PROPIEDAD (MANTENIDOS IGUAL) ---
-    public function render_main_data( $post ) {
-        // ... (Mismo código de propiedades que ya aprobaste - Omitido para brevedad, mantener el anterior)
-        // SI NECESITAS QUE TE PEGUE EL DE PROPIEDADES DE NUEVO ENTERO DIMELO, 
-        // PERO AQUÍ ME CONCENTRO EN EL DUEÑO PARA NO REPETIR TODO EL TEXTO.
-        // Voy a asumir que mantienes el render_main_data anterior.
-        // Para asegurar que copias todo bien, te pondré un placeholder:
-        $this->render_propiedad_full($post); 
+    // --- RENDER SIDEBAR GALERÍA ---
+    public function render_gallery_side( $post ) {
+        $ids = get_post_meta( $post->ID, '_inmo_galeria', true );
+        $count = $ids ? count(explode(',', $ids)) : 0;
+        ?>
+        <p class="description">Sube aquí las imágenes adicionales del interior y exterior.</p>
+        <p style="font-weight:bold; color:#2271b1;">Recomendado: 10 fotos + 1 Portada</p>
+        
+        <div class="inmo-gallery-box">
+            <input type="hidden" id="_inmo_galeria" name="_inmo_galeria" value="<?php echo esc_attr($ids); ?>">
+            <button class="button inmo-upload-gallery button-large" style="width:100%;">📂 Gestionar Galería</button>
+            <div class="inmo-gallery-preview" style="margin-top:10px;">
+                <?php if($count > 0): ?>
+                    <p style="color:green; font-weight:bold;">✅ <?php echo $count; ?> imágenes cargadas</p>
+                <?php else: ?>
+                    <p style="color:#666;">Sin imágenes adicionales.</p>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php
     }
-    
-    // Función auxiliar para no perder el código de propiedad anterior
-    private function render_propiedad_full($post) {
+
+    // --- RENDER PRINCIPAL ---
+    public function render_main_data( $post ) {
         wp_nonce_field( 'inmo_save_meta', 'inmo_nonce' );
         $dueno_id = get_post_meta( $post->ID, '_inmo_dueno_id', true );
         $duenos = get_posts( array( 'post_type' => 'dueno', 'numberposts' => -1, 'post_status' => 'any' ) );
+        $nota = get_post_meta( $post->ID, '_inmo_nota_interna', true );
         ?>
+        
         <div style="background: #f0f6fc; padding: 15px; border: 1px solid #c5d9ed; margin-bottom: 10px;">
-            <label style="font-size: 1.2em; font-weight: bold;">👤 Dueño de la Propiedad</label>
-            <div style="display: flex; gap: 10px; margin-top: 5px;">
-                <select name="_inmo_dueno_id" class="widefat" style="max-width: 400px;">
-                    <option value="">-- Seleccionar Dueño --</option>
-                    <?php foreach ( $duenos as $d ) : ?>
-                        <option value="<?php echo $d->ID; ?>" <?php selected( $dueno_id, $d->ID ); ?>><?php echo esc_html( $d->post_title ); ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <a href="<?php echo admin_url('post-new.php?post_type=dueno'); ?>" target="_blank" class="button button-primary">➕ Nuevo Dueño</a>
-                <button type="button" id="btn-refresh-duenos" class="button button-secondary">🔄 Refrescar</button>
+            <div class="inmo-grid-2">
+                <div>
+                    <label style="font-size: 1.1em; font-weight: bold;">👤 Dueño:</label>
+                    <div style="display: flex; gap: 10px; margin-top: 5px;">
+                        <select name="_inmo_dueno_id" class="widefat">
+                            <option value="">-- Seleccionar --</option>
+                            <?php foreach ( $duenos as $d ) : ?>
+                                <option value="<?php echo $d->ID; ?>" <?php selected( $dueno_id, $d->ID ); ?>><?php echo esc_html( $d->post_title ); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <a href="<?php echo admin_url('post-new.php?post_type=dueno'); ?>" target="_blank" class="button">➕</a>
+                        <button type="button" id="btn-refresh-duenos" class="button">🔄</button>
+                    </div>
+                </div>
+                <div>
+                    <label style="font-size: 1.1em; font-weight: bold;">📝 Nota Interna (Admin):</label>
+                    <textarea name="_inmo_nota_interna" rows="2" class="widefat" placeholder="Detalles privados de negociación, llaves, alarmas..."><?php echo esc_textarea($nota); ?></textarea>
+                </div>
             </div>
         </div>
 
         <h3 class="inmo-zone-title">📍 ZONA: Ubicación</h3>
         <div class="inmo-grid-2">
             <div class="inmo-field inmo-alert-admin">
-                <label>🔒 Ubicación Real (Solo Admin/Interno):</label>
+                <label>🔒 Ubicación Real (Solo Admin):</label>
                 <input type="text" name="_inmo_ubicacion_real" value="<?php echo esc_attr(get_post_meta($post->ID, '_inmo_ubicacion_real', true)); ?>" placeholder="Ej: Av. Italia 4532 Apto 401">
             </div>
             <div class="inmo-field inmo-alert-public">
-                <label>🌍 Ubicación Referenciada (Para Clientes):</label>
+                <label>🌍 Ubicación Referenciada (Pública):</label>
                 <input type="text" name="_inmo_ubicacion_ref" value="<?php echo esc_attr(get_post_meta($post->ID, '_inmo_ubicacion_ref', true)); ?>" placeholder="Ej: Malvín, cerca de Av. Italia y Comercio">
             </div>
         </div>
+
         <h3 class="inmo-zone-title">🧾 ZONA: Gastos y Mantenimiento</h3>
         <div class="inmo-grid-3">
              <?php $this->render_input($post, 'Gastos Comunes ($)', '_inmo_gastos_comunes'); $this->render_bool($post, 'Gastos Incluidos', '_inmo_gastos_incluidos'); ?>
         </div>
+
         <h3 class="inmo-zone-title">🛋️ ZONA 1: Comodidades</h3>
         <div class="inmo-grid-3">
             <?php 
@@ -131,6 +161,7 @@ class Inmo_Metaboxes {
             $this->render_bool($post, 'Adaptada Movilidad', '_inmo_movilidad');
             ?>
         </div>
+
         <h3 class="inmo-zone-title">📐 ZONA 2: Características y Superficies</h3>
         <div class="inmo-grid-3">
             <?php 
@@ -145,6 +176,7 @@ class Inmo_Metaboxes {
             $this->render_select($post, 'Estacionamiento', '_inmo_estacionamiento_tipo', ['Estacionamiento','Exclusivo','Si','No','Fijo','Vigilado']);
             ?>
         </div>
+
         <div class="inmo-grid-2">
             <div>
                 <h3 class="inmo-zone-title">💰 ZONA VENTA</h3>
@@ -179,127 +211,48 @@ class Inmo_Metaboxes {
         <?php
     }
 
-    // --- RENDERIZADOR NUEVO DE DUEÑOS ---
-
-    public function render_dueno_data( $post ) {
-        wp_nonce_field( 'inmo_save_meta', 'inmo_nonce' );
-        
-        $telefono = get_post_meta( $post->ID, '_dueno_telefono', true );
-        $status = get_post_meta( $post->ID, '_dueno_status_propiedad', true );
-        $check_result = get_post_meta( $post->ID, '_dueno_consultado', true );
-        $last_check = get_post_meta( $post->ID, '_dueno_fecha_check', true );
-
-        // Buscar propiedades vinculadas (Query inversa)
-        $propiedades = get_posts( array(
-            'post_type' => 'propiedad',
-            'meta_key' => '_inmo_dueno_id',
-            'meta_value' => $post->ID,
-            'numberposts' => -1
-        ));
-        ?>
-        <div class="inmo-grid-2">
-            <div>
-                <p>
-                    <label>📞 Teléfono (Para WhatsApp IA):</label>
-                    <input type="text" name="_dueno_telefono" value="<?php echo esc_attr($telefono); ?>" class="widefat" placeholder="+598 99 123 456">
-                </p>
-                
-                <div class="dueno-status-alert">
-                    <label>🚩 Status General de la Propiedad:</label>
-                    <select name="_dueno_status_propiedad" class="widefat" style="font-weight:bold;">
-                        <option value="">-- Definir Status --</option>
-                        <option value="Disponible" <?php selected($status, 'Disponible'); ?>>🟢 Disponible</option>
-                        <option value="En Proceso" <?php selected($status, 'En Proceso'); ?>>🟡 En Proceso</option>
-                        <option value="Reservada" <?php selected($status, 'Reservada'); ?>>🟠 Reservada</option>
-                        <option value="Alquilada" <?php selected($status, 'Alquilada'); ?>>🔴 Alquilada</option>
-                        <option value="Vendida" <?php selected($status, 'Vendida'); ?>>🔴 Vendida</option>
-                        <option value="Suspendida" <?php selected($status, 'Suspendida'); ?>>⚫ Suspendida</option>
-                    </select>
-                    <p class="description">Este estado se actualiza tras el check semanal.</p>
-                </div>
-            </div>
-
-            <div>
-                <label>🤖 Check de Disponibilidad (Lunes):</label>
-                <div style="background:#fff; border:1px solid #ddd; padding:10px; margin-top:5px;">
-                    <p>
-                        <strong>Resultado Último Check:</strong><br>
-                        <textarea name="_dueno_consultado" rows="2" class="widefat" placeholder="Ej: Confirmó que sigue disponible."><?php echo esc_textarea($check_result); ?></textarea>
-                    </p>
-                    <p>
-                        <strong>Fecha Último Check:</strong><br>
-                        <input type="date" name="_dueno_fecha_check" value="<?php echo esc_attr($last_check); ?>">
-                    </p>
-                </div>
-            </div>
-        </div>
-
-        <hr>
-        
-        <h4>🔗 Propiedades Vinculadas (ID de la Propiedad)</h4>
-        <?php if ( empty( $propiedades ) ) : ?>
-            <p style="color: red;">⚠️ Este dueño no tiene propiedades asignadas. Ve a "Propiedades" y asígnale una.</p>
-        <?php else : ?>
-            <?php foreach ( $propiedades as $p ) : 
-                $estado_pub = get_post_status($p->ID) == 'publish' ? 'Publicada' : 'Borrador';
-                ?>
-                <div class="dueno-prop-card">
-                    <strong>ID: <?php echo $p->ID; ?></strong> - <a href="<?php echo get_edit_post_link($p->ID); ?>" target="_blank"><?php echo esc_html($p->post_title); ?></a>
-                    <span style="float:right; color:#666;"><?php echo $estado_pub; ?></span>
-                    <br>
-                    <small>URL Pública: <a href="<?php echo get_permalink($p->ID); ?>" target="_blank"><?php echo get_permalink($p->ID); ?></a></small>
-                </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
-
-        <?php
-    }
-
-    // --- HELPERS Y OTROS RENDERIZADORES (MANTENER IGUAL QUE ANTES) ---
-    // (Incluye aquí render_gallery_data, render_leads_list, render_cliente_data, etc. del código previo)
-    // Para no hacer el mensaje eterno, asumo que mantienes esas funciones. 
-    // SOLO PEGO ABAJO EL GUARDADO NUEVO QUE ES CRÍTICO.
-    
-    public function render_gallery_data($post) { $this->render_gallery_logic($post); } // Wrapper simple
-    private function render_gallery_logic($post) {
-        $nota = get_post_meta($post->ID, '_inmo_nota_interna', true);
-        $ids = get_post_meta($post->ID, '_inmo_galeria', true);
-        echo '<p><label>Nota Interna:</label><textarea name="_inmo_nota_interna" rows="3" class="widefat">'.esc_textarea($nota).'</textarea></p>';
-        echo '<input type="hidden" id="_inmo_galeria" name="_inmo_galeria" value="'.esc_attr($ids).'"><button class="button inmo-upload-gallery">📷 Subir Fotos</button>';
-    }
-    public function render_leads_list($post) { /* Mismo código anterior */ }
-    public function render_cliente_data($post) { /* Mismo código anterior */ }
-
-    // --- HELPERS ---
-    private function render_input($post, $label, $id, $type='text') {
-        echo '<div class="inmo-field"><label>'.$label.':</label><input type="'.$type.'" name="'.$id.'" value="'.esc_attr(get_post_meta($post->ID,$id,true)).'"></div>';
-    }
-    private function render_select($post, $label, $id, $opts) {
-        $val = get_post_meta($post->ID,$id,true); echo '<div class="inmo-field"><label>'.$label.':</label><select name="'.$id.'"><option value="">--</option>';
-        foreach($opts as $o) echo '<option value="'.$o.'" '.selected($val,$o,false).'>'.$o.'</option>'; echo '</select></div>';
-    }
+    // --- HELPERS (render_input, select, bool) MISMOS QUE ANTES ---
+    private function render_input($post, $label, $id, $type='text') { echo '<div class="inmo-field"><label>'.$label.':</label><input type="'.$type.'" name="'.$id.'" value="'.esc_attr(get_post_meta($post->ID,$id,true)).'"></div>'; }
+    private function render_select($post, $label, $id, $opts) { $val = get_post_meta($post->ID,$id,true); echo '<div class="inmo-field"><label>'.$label.':</label><select name="'.$id.'"><option value="">--</option>'; foreach($opts as $o) echo '<option value="'.$o.'" '.selected($val,$o,false).'>'.$o.'</option>'; echo '</select></div>'; }
     private function render_bool($post, $label, $id) { $this->render_select($post,$label,$id,['Si','No']); }
 
+    // --- LEADS Y DUEÑOS (MISMOS QUE ANTES) ---
+    public function render_leads_list($post) { /* Código anterior */ 
+        $leads = get_posts( array('post_type' => 'cliente', 'meta_key' => '_cliente_propiedad_id', 'meta_value' => $post->ID, 'numberposts' => -1 ));
+        if(empty($leads)){echo '<p>Sin interesados.</p>';return;}
+        echo '<table class="widefat striped"><thead><tr><th>Cliente</th><th>Teléfono</th><th>Status</th><th>Acción</th></tr></thead><tbody>';
+        foreach($leads as $l){ echo '<tr><td>'.esc_html($l->post_title).'</td><td>'.get_post_meta($l->ID,'_cliente_telefono',true).'</td><td>'.get_post_meta($l->ID,'_cliente_status_proceso',true).'</td><td><a href="'.get_edit_post_link($l->ID).'" class="button button-small">Ver</a></td></tr>'; }
+        echo '</tbody></table>';
+    }
+    public function render_dueno_data($post) { /* Código anterior con mejoras de status */
+        wp_nonce_field( 'inmo_save_meta', 'inmo_nonce' );
+        $telefono = get_post_meta( $post->ID, '_dueno_telefono', true ); $status = get_post_meta( $post->ID, '_dueno_status_propiedad', true );
+        $check_result = get_post_meta( $post->ID, '_dueno_consultado', true ); $last_check = get_post_meta( $post->ID, '_dueno_fecha_check', true );
+        $propiedades = get_posts( array('post_type' => 'propiedad', 'meta_key' => '_inmo_dueno_id', 'meta_value' => $post->ID, 'numberposts' => -1 ));
+        ?>
+        <div class="inmo-grid-2">
+            <div><p><label>📞 Teléfono:</label><input type="text" name="_dueno_telefono" value="<?php echo esc_attr($telefono); ?>" class="widefat"></p>
+                <div class="dueno-status-alert"><label>🚩 Status:</label><select name="_dueno_status_propiedad" class="widefat"><option value="">--</option><?php foreach(['Disponible','En Proceso','Reservada','Alquilada','Vendida','Suspendida'] as $s) echo '<option value="'.$s.'" '.selected($status,$s,false).'>'.$s.'</option>'; ?></select></div></div>
+            <div><label>🤖 Check IA:</label><textarea name="_dueno_consultado" rows="2" class="widefat"><?php echo esc_textarea($check_result); ?></textarea><input type="date" name="_dueno_fecha_check" value="<?php echo esc_attr($last_check); ?>"></div>
+        </div>
+        <hr><h4>🔗 Propiedades</h4>
+        <?php foreach($propiedades as $p) echo '<div>ID: '.$p->ID.' - <a href="'.get_edit_post_link($p->ID).'">'.$p->post_title.'</a></div>'; ?>
+        <?php
+    }
+    public function render_cliente_data($post) { /* Código anterior */ 
+        $pid=get_post_meta($post->ID,'_cliente_propiedad_id',true); $props=get_posts(['post_type'=>'propiedad','numberposts'=>50]);
+        echo '<p><label>Propiedad:</label><select name="_cliente_propiedad_id" class="widefat"><option value="">--</option>'; foreach($props as $p) echo '<option value="'.$p->ID.'" '.selected($pid,$p->ID,false).'>'.$p->post_title.'</option>'; echo '</select></p>';
+        echo '<p><label>Teléfono:</label><input type="text" name="_cliente_telefono" value="'.esc_attr(get_post_meta($post->ID,'_cliente_telefono',true)).'" class="widefat"></p>';
+        echo '<p><label>Status:</label><select name="_cliente_status_proceso" class="widefat">'; foreach(['En Proceso','En Espera','Visitando','Reservado','Realizado'] as $s) echo '<option value="'.$s.'" '.selected(get_post_meta($post->ID,'_cliente_status_proceso',true),$s,false).'>'.$s.'</option>'; echo '</select></p>';
+    }
 
-    // --- GUARDADO FINAL ACTUALIZADO ---
-
+    // --- GUARDADO ---
     public function save_custom_data( $post_id ) {
         if ( ! isset( $_POST['inmo_nonce'] ) || ! wp_verify_nonce( $_POST['inmo_nonce'], 'inmo_save_meta' ) ) return;
         if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
         if ( ! isset( $_POST['post_type'] ) ) return;
 
-        // GUARDAR DUEÑO (NUEVO)
-        if ( 'dueno' === $_POST['post_type'] ) {
-            if(isset($_POST['_dueno_telefono'])) update_post_meta( $post_id, '_dueno_telefono', sanitize_text_field( $_POST['_dueno_telefono'] ) );
-            if(isset($_POST['_dueno_status_propiedad'])) update_post_meta( $post_id, '_dueno_status_propiedad', sanitize_text_field( $_POST['_dueno_status_propiedad'] ) );
-            if(isset($_POST['_dueno_consultado'])) update_post_meta( $post_id, '_dueno_consultado', sanitize_textarea_field( $_POST['_dueno_consultado'] ) );
-            if(isset($_POST['_dueno_fecha_check'])) update_post_meta( $post_id, '_dueno_fecha_check', sanitize_text_field( $_POST['_dueno_fecha_check'] ) );
-        }
-
-        // GUARDAR PROPIEDAD (MANTENIDO)
         if ( 'propiedad' === $_POST['post_type'] ) {
-            // ... (Lista larga de campos de propiedad del código anterior) ...
-            // RESUMEN PARA NO BORRARTE DATOS:
             $fields = ['_inmo_dueno_id','_inmo_nota_interna','_inmo_galeria','_inmo_ubicacion_real','_inmo_ubicacion_ref','_inmo_gastos_comunes','_inmo_gastos_incluidos',
             '_inmo_dormitorios','_inmo_banos','_inmo_suites','_inmo_toilettes','_inmo_living','_inmo_comedor','_inmo_living_comedor','_inmo_cocina_tipo','_inmo_capacidad','_inmo_camas','_inmo_dep_servicio','_inmo_bano_servicio','_inmo_amoblada','_inmo_lavadero','_inmo_calefaccion_tipo','_inmo_aire_tipo','_inmo_parrillero_tipo','_inmo_movilidad',
             '_inmo_sup_propia','_inmo_sup_total','_inmo_sup_cubierta','_inmo_sup_semi','_inmo_sup_balcon','_inmo_estado','_inmo_apto_profesional','_inmo_baulera','_inmo_terraza_tipo','_inmo_cochera_tipo','_inmo_garage_tipo','_inmo_estacionamiento_tipo',
@@ -310,11 +263,11 @@ class Inmo_Metaboxes {
             foreach($checks as $c) { $val = ( isset($_POST[$c]) && is_array($_POST[$c]) ) ? $_POST[$c] : array(); update_post_meta($post_id, $c, $val); }
         }
 
-        // GUARDAR CLIENTE (MANTENIDO)
+        if ( 'dueno' === $_POST['post_type'] ) {
+            foreach(['_dueno_telefono','_dueno_status_propiedad','_dueno_consultado','_dueno_fecha_check'] as $f) if(isset($_POST[$f])) update_post_meta($post_id, $f, sanitize_text_field($_POST[$f]));
+        }
         if ( 'cliente' === $_POST['post_type'] ) {
-            if(isset($_POST['_cliente_propiedad_id'])) update_post_meta( $post_id, '_cliente_propiedad_id', sanitize_text_field( $_POST['_cliente_propiedad_id'] ) );
-            if(isset($_POST['_cliente_status_proceso'])) update_post_meta( $post_id, '_cliente_status_proceso', sanitize_text_field( $_POST['_cliente_status_proceso'] ) );
-            if(isset($_POST['_cliente_telefono'])) update_post_meta( $post_id, '_cliente_telefono', sanitize_text_field( $_POST['_cliente_telefono'] ) );
+            foreach(['_cliente_propiedad_id','_cliente_status_proceso','_cliente_telefono'] as $f) if(isset($_POST[$f])) update_post_meta($post_id, $f, sanitize_text_field($_POST[$f]));
         }
     }
 }
