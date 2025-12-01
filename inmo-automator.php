@@ -8,7 +8,6 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 // Cargar dependencias de forma segura
-require_once plugin_dir_path( __FILE__ ) . 'seeder.php';
 if ( file_exists( plugin_dir_path( __FILE__ ) . 'inmo-metaboxes.php' ) ) {
     require_once plugin_dir_path( __FILE__ ) . 'inmo-metaboxes.php';
 }
