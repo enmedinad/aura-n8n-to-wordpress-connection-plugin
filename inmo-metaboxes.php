@@ -16,37 +16,85 @@ class Inmo_Metaboxes {
         return $settings;
     }
 
-    public function enqueue_scripts() {
+    public function enqueue_scripts( $hook ) {
         global $post;
-        if ( ! $post ) return;
-        if ( 'propiedad' === $post->post_type ) wp_enqueue_media();
+
+        // 1. Verificar que estamos en el editor de posts
+        if ( $hook !== 'post.php' && $hook !== 'post-new.php' ) {
+            return;
+        }
+
+        // 2. Verificar que es una Propiedad
+        if ( ! $post || 'propiedad' !== $post->post_type ) {
+            return;
+        }
+
+        // 3. Cargar librería multimedia OBLIGATORIAMENTE
+        wp_enqueue_media();
+        
+        // 4. Script JS corregido y robusto
         ?>
         <script type="text/javascript">
         jQuery(document).ready(function($){
-            // Script Galería Sidebar
-            $('.inmo-upload-gallery').click(function(e) {
+            
+            var inmo_gallery_frame;
+
+            // --- BOTÓN GALERÍA ---
+            $('.inmo-upload-gallery').on('click', function(e) {
                 e.preventDefault();
-                var custom_uploader = wp.media({ title: 'Seleccionar Imágenes Adicionales', button: { text: 'Añadir a Galería' }, multiple: true })
-                .on('select', function() {
+
+                // Si el frame ya existe, ábrelo de nuevo
+                if ( inmo_gallery_frame ) {
+                    inmo_gallery_frame.open();
+                    return;
+                }
+
+                // Crear el frame multimedia
+                inmo_gallery_frame = wp.media({
+                    title: 'Seleccionar Imágenes para la Galería',
+                    button: { text: 'Añadir a Galería' },
+                    multiple: 'add', // Permitir selección múltiple
+                    library: { type: 'image' } // Solo mostrar imágenes
+                });
+
+                // Cuando se seleccionan imágenes
+                inmo_gallery_frame.on('select', function() {
+                    var selection = inmo_gallery_frame.state().get('selection');
                     var ids = [];
-                    custom_uploader.state().get('selection').map( function( attachment ) { ids.push(attachment.toJSON().id); });
-                    $('#_inmo_galeria').val(ids.join(','));
                     
-                    // Preview simple en sidebar
-                    var html = '';
+                    selection.map( function( attachment ) {
+                        attachment = attachment.toJSON();
+                        ids.push(attachment.id);
+                    });
+
+                    // Guardar IDs en el input oculto (agregando a los existentes o reemplazando)
+                    // Nota: Aquí reemplazamos para simplificar, si quieres "agregar" avísame.
+                    $('#_inmo_galeria').val(ids.join(','));
+
+                    // Actualizar texto visual
                     if(ids.length > 0) {
-                        html = '<p style="color:green; font-weight:bold;">✅ ' + ids.length + ' imágenes seleccionadas</p>';
-                        html += '<small>Recuerda guardar para ver los cambios.</small>';
+                        $('.inmo-gallery-preview').html('<p style="color:green; font-weight:bold;">✅ ' + ids.length + ' imágenes listas para guardar.</p>');
                     }
-                    $('.inmo-gallery-preview').html(html);
-                }).open();
+                });
+
+                // Abrir modal
+                inmo_gallery_frame.open();
             });
-            $('#btn-refresh-duenos').click(function(e){
-                e.preventDefault(); if(confirm('Guardar cambios antes?')) location.reload();
+
+            // --- BOTÓN REFRESCAR DUEÑOS ---
+            $('#btn-refresh-duenos').on('click', function(e){
+                e.preventDefault();
+                if(confirm('¿Guardar cambios antes de recargar la página?')) {
+                    $('#publish').click(); // Simula clic en Actualizar
+                } else {
+                    location.reload();
+                }
             });
+
         });
         </script>
         <style>
+            /* Estilos auxiliares */
             .inmo-zone-title { background: #2271b1; color: white; padding: 10px; margin: 20px 0 10px 0; border-radius: 4px; font-size: 1.1em; }
             .inmo-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
             .inmo-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -55,7 +103,6 @@ class Inmo_Metaboxes {
             .inmo-field select, .inmo-field input[type="text"], .inmo-field input[type="number"], .inmo-field input[type="date"] { width: 100%; }
             .inmo-checks label { display: block; margin-bottom: 4px; font-weight: normal; font-size: 0.9em; }
             .dueno-status-alert { background: #fff8e5; border: 1px solid #f0c33c; padding: 10px; border-radius: 5px; margin-top: 10px; }
-            /* Estilo especial para la galería en sidebar */
             .inmo-gallery-box { text-align: center; background: #f0f0f1; padding: 10px; border: 1px dashed #8c8f94; margin-top: 10px; }
         </style>
         <?php
