@@ -10,6 +10,9 @@ if ( ! defined( 'ABSPATH' ) ) exit; // Seguridad
 
 class InmoAutomator {
 
+    require_once plugin_dir_path( __FILE__ ) . 'inmo-metaboxes.php';
+    require_once plugin_dir_path( __FILE__ ) . 'inmo-api.php'; // <--- AGREGAR ESTO
+
     public function __construct() {
         add_action( 'init', array( $this, 'register_cpts' ) );
         add_action( 'init', array( $this, 'register_taxonomies' ) );
@@ -70,5 +73,7 @@ class InmoAutomator {
         return $current_status;
     }
 }
+
+
 
 new InmoAutomator();
