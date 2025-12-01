@@ -19,82 +19,28 @@ class Inmo_Metaboxes {
     public function enqueue_scripts( $hook ) {
         global $post;
 
-        // 1. Verificar que estamos en el editor de posts
-        if ( $hook !== 'post.php' && $hook !== 'post-new.php' ) {
-            return;
-        }
+        // 1. Validaciones
+        if ( $hook !== 'post.php' && $hook !== 'post-new.php' ) return;
+        if ( ! $post || 'propiedad' !== $post->post_type ) return;
 
-        // 2. Verificar que es una Propiedad
-        if ( ! $post || 'propiedad' !== $post->post_type ) {
-            return;
-        }
-
-        // 3. Cargar librería multimedia OBLIGATORIAMENTE
+        // 2. Cargar librería multimedia nativa
         wp_enqueue_media();
         
-        // 4. Script JS corregido y robusto
+        // 3. Script JS Galería (NUEVO Y ROBUSTO)
         ?>
-        <script type="text/javascript">
-        jQuery(document).ready(function($){
-            
-            var inmo_gallery_frame;
-
-            // --- BOTÓN GALERÍA ---
-            $('.inmo-upload-gallery').on('click', function(e) {
-                e.preventDefault();
-
-                // Si el frame ya existe, ábrelo de nuevo
-                if ( inmo_gallery_frame ) {
-                    inmo_gallery_frame.open();
-                    return;
-                }
-
-                // Crear el frame multimedia
-                inmo_gallery_frame = wp.media({
-                    title: 'Seleccionar Imágenes para la Galería',
-                    button: { text: 'Añadir a Galería' },
-                    multiple: 'add', // Permitir selección múltiple
-                    library: { type: 'image' } // Solo mostrar imágenes
-                });
-
-                // Cuando se seleccionan imágenes
-                inmo_gallery_frame.on('select', function() {
-                    var selection = inmo_gallery_frame.state().get('selection');
-                    var ids = [];
-                    
-                    selection.map( function( attachment ) {
-                        attachment = attachment.toJSON();
-                        ids.push(attachment.id);
-                    });
-
-                    // Guardar IDs en el input oculto (agregando a los existentes o reemplazando)
-                    // Nota: Aquí reemplazamos para simplificar, si quieres "agregar" avísame.
-                    $('#_inmo_galeria').val(ids.join(','));
-
-                    // Actualizar texto visual
-                    if(ids.length > 0) {
-                        $('.inmo-gallery-preview').html('<p style="color:green; font-weight:bold;">✅ ' + ids.length + ' imágenes listas para guardar.</p>');
-                    }
-                });
-
-                // Abrir modal
-                inmo_gallery_frame.open();
-            });
-
-            // --- BOTÓN REFRESCAR DUEÑOS ---
-            $('#btn-refresh-duenos').on('click', function(e){
-                e.preventDefault();
-                if(confirm('¿Guardar cambios antes de recargar la página?')) {
-                    $('#publish').click(); // Simula clic en Actualizar
-                } else {
-                    location.reload();
-                }
-            });
-
-        });
-        </script>
         <style>
-            /* Estilos auxiliares */
+            /* Estilos Galería */
+            .inmo-gallery-container { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
+            .inmo-img-wrapper { position: relative; width: 80px; height: 80px; border: 1px solid #ddd; background: #f0f0f0; }
+            .inmo-img-wrapper img { width: 100%; height: 100%; object-fit: cover; }
+            .inmo-remove-img { 
+                position: absolute; top: -5px; right: -5px; 
+                background: red; color: white; border-radius: 50%; 
+                width: 20px; height: 20px; text-align: center; line-height: 20px; 
+                font-size: 12px; cursor: pointer; font-weight: bold; border: 1px solid white;
+            }
+            .inmo-remove-img:hover { background: darkred; }
+            /* Estilos generales (Tus estilos originales) */
             .inmo-zone-title { background: #2271b1; color: white; padding: 10px; margin: 20px 0 10px 0; border-radius: 4px; font-size: 1.1em; }
             .inmo-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
             .inmo-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -103,8 +49,98 @@ class Inmo_Metaboxes {
             .inmo-field select, .inmo-field input[type="text"], .inmo-field input[type="number"], .inmo-field input[type="date"] { width: 100%; }
             .inmo-checks label { display: block; margin-bottom: 4px; font-weight: normal; font-size: 0.9em; }
             .dueno-status-alert { background: #fff8e5; border: 1px solid #f0c33c; padding: 10px; border-radius: 5px; margin-top: 10px; }
-            .inmo-gallery-box { text-align: center; background: #f0f0f1; padding: 10px; border: 1px dashed #8c8f94; margin-top: 10px; }
         </style>
+
+        <script type="text/javascript">
+        jQuery(document).ready(function($){
+            
+            var frame;
+            var $imgContainer = $('#inmo_gallery_container');
+            var $hiddenInput = $('#_inmo_galeria');
+
+            // --- BOTÓN AGREGAR FOTOS ---
+            $('.inmo-upload-gallery').on('click', function(e) {
+                e.preventDefault();
+
+                // Si ya existe el frame, lo abrimos
+                if ( frame ) {
+                    frame.open();
+                    return;
+                }
+
+                // Configuración Nativa de WP
+                frame = wp.media({
+                    title: 'Seleccionar Imágenes para la Galería (Máx 15)',
+                    button: { text: 'Actualizar Galería' },
+                    multiple: true, // Importante: permite selección múltiple
+                    library: { type: 'image' }
+                });
+
+                // Al abrir, pre-seleccionar las imágenes que ya estaban guardadas
+                frame.on('open', function() {
+                    var selection = frame.state().get('selection');
+                    var ids = $hiddenInput.val().split(',');
+                    ids.forEach(function(id) {
+                        if(id) {
+                            var attachment = wp.media.attachment(id);
+                            attachment.fetch();
+                            selection.add( attachment ? [ attachment ] : [] );
+                        }
+                    });
+                });
+
+                // Al seleccionar imágenes
+                frame.on('select', function() {
+                    var selection = frame.state().get('selection');
+                    var ids = [];
+                    $imgContainer.empty(); // Limpiamos visualmente para reconstruir
+
+                    selection.map( function( attachment ) {
+                        attachment = attachment.toJSON();
+                        ids.push(attachment.id);
+                        
+                        // Url del thumbnail o full si no existe
+                        var url = attachment.sizes && attachment.sizes.thumbnail ? attachment.sizes.thumbnail.url : attachment.url;
+                        
+                        // Crear HTML de vista previa
+                        $imgContainer.append(
+                            '<div class="inmo-img-wrapper" data-id="'+attachment.id+'">' +
+                                '<img src="'+url+'" />' +
+                                '<div class="inmo-remove-img" title="Quitar">X</div>' +
+                            '</div>'
+                        );
+                    });
+
+                    // Actualizar el input oculto que se guarda en la DB
+                    $hiddenInput.val(ids.join(','));
+                });
+
+                frame.open();
+            });
+
+            // --- BOTÓN BORRAR INDIVIDUAL (X) ---
+            $(document).on('click', '.inmo-remove-img', function() {
+                var $wrapper = $(this).parent();
+                var idToRemove = $wrapper.data('id');
+                var currentIds = $hiddenInput.val().split(',');
+
+                // Filtrar el ID eliminado
+                var newIds = currentIds.filter(function(id) {
+                    return id != idToRemove && id != "";
+                });
+
+                $hiddenInput.val(newIds.join(','));
+                $wrapper.remove();
+            });
+
+            // --- REFRESCAR DUEÑOS ---
+            $('#btn-refresh-duenos').on('click', function(e){
+                e.preventDefault();
+                if(confirm('¿Guardar cambios antes de recargar?')) $('#publish').click();
+            });
+
+        });
+        </script>
         <?php
     }
 
@@ -113,40 +149,44 @@ class Inmo_Metaboxes {
         add_meta_box( 'inmo_main_data', '🏢 Gestión Integral de la Propiedad', array( $this, 'render_main_data' ), 'propiedad', 'normal', 'high' );
         add_meta_box( 'inmo_leads_list', '👥 Interesados', array( $this, 'render_leads_list' ), 'propiedad', 'normal', 'low' );
         
-        // SIDEBAR (LATERAL)
-        // Galería movida al lateral, prioridad 'low' para que salga bajo la Imagen Destacada (Portada)
-        add_meta_box( 'inmo_gallery_side', '📷 Galería de Imágenes (10+)', array( $this, 'render_gallery_side' ), 'propiedad', 'side', 'low' );
+        // SIDEBAR: Galería (Corregida)
+        add_meta_box( 'inmo_gallery_side', '📷 Galería de Imágenes', array( $this, 'render_gallery_side' ), 'propiedad', 'side', 'low' );
         
         // DUEÑOS Y CLIENTES
         add_meta_box( 'inmo_dueno_data', '👤 Ficha del Dueño', array( $this, 'render_dueno_data' ), 'dueno', 'normal', 'high' );
         add_meta_box( 'inmo_cliente_data', 'Datos Lead', array( $this, 'render_cliente_data' ), 'cliente', 'side', 'high' );
     }
 
-    // --- RENDER SIDEBAR GALERÍA ---
+    // --- RENDER SIDEBAR GALERÍA (HTML NUEVO) ---
     public function render_gallery_side( $post ) {
-        $ids = get_post_meta( $post->ID, '_inmo_galeria', true );
-        $count = $ids ? count(explode(',', $ids)) : 0;
+        $ids_str = get_post_meta( $post->ID, '_inmo_galeria', true );
+        $ids_arr = array_filter(explode(',', $ids_str));
         ?>
-        <p class="description">Sube aquí las imágenes adicionales del interior y exterior.</p>
-        <p style="font-weight:bold; color:#2271b1;">Recomendado: 10 fotos + 1 Portada</p>
+        <p class="description">Arrastra, suelta o selecciona varias imágenes.</p>
         
-        <div class="inmo-gallery-box">
-            <input type="hidden" id="_inmo_galeria" name="_inmo_galeria" value="<?php echo esc_attr($ids); ?>">
-            
-            <button type="button" class="button inmo-upload-gallery button-large" style="width:100%;">📂 Gestionar Galería</button>
-            
-            <div class="inmo-gallery-preview" style="margin-top:10px;">
-                <?php if($count > 0): ?>
-                    <p style="color:green; font-weight:bold;">✅ <?php echo $count; ?> imágenes cargadas</p>
-                <?php else: ?>
-                    <p style="color:#666;">Sin imágenes adicionales.</p>
-                <?php endif; ?>
-            </div>
+        <div id="inmo_gallery_container" class="inmo-gallery-container">
+            <?php 
+            if ( ! empty( $ids_arr ) ) {
+                foreach ( $ids_arr as $img_id ) {
+                    $url = wp_get_attachment_image_url( $img_id, 'thumbnail' );
+                    if ( $url ) {
+                        echo '<div class="inmo-img-wrapper" data-id="'.$img_id.'">';
+                        echo '<img src="'.esc_url($url).'">';
+                        echo '<div class="inmo-remove-img" title="Quitar">X</div>';
+                        echo '</div>';
+                    }
+                }
+            }
+            ?>
         </div>
+        
+        <input type="hidden" id="_inmo_galeria" name="_inmo_galeria" value="<?php echo esc_attr($ids_str); ?>">
+        
+        <button type="button" class="button button-large inmo-upload-gallery" style="width:100%;">📂 Gestionar Galería</button>
         <?php
     }
 
-    // --- RENDER PRINCIPAL ---
+    // --- RENDER PRINCIPAL (TU CÓDIGO ORIGINAL CONSERVADO) ---
     public function render_main_data( $post ) {
         wp_nonce_field( 'inmo_save_meta', 'inmo_nonce' );
         $dueno_id = get_post_meta( $post->ID, '_inmo_dueno_id', true );
