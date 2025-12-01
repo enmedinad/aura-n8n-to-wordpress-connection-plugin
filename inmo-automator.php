@@ -49,6 +49,11 @@ class InmoAutomator {
         ));
     }
 
+    // ... dentro de inmo-automator.php
+    require_once plugin_dir_path( __FILE__ ) . 'inmo-metaboxes.php';
+    require_once plugin_dir_path( __FILE__ ) . 'inmo-api.php'; // <--- AGREGAR ESTO
+    // ...
+
     public function register_taxonomies() {
         // Amenities (Cocina, Living, etc.)
         register_taxonomy( 'amenities', 'propiedad', array(
