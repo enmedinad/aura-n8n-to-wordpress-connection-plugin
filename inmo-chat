@@ -1,0 +1,133 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) exit;
+
+class Inmo_Chat_Frontend {
+
+    // 🔴 CONFIGURACIÓN: PEGA AQUÍ TU URL DE WEBHOOK DE N8N (MÉTODO POST)
+    private $n8n_webhook_url = 'https://TU-INSTANCIA-N8N/webhook/chat-inmobiliario'; 
+
+    public function __construct() {
+        add_action( 'wp_footer', array( $this, 'render_chat_widget' ) );
+        add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+    }
+
+    public function enqueue_assets() {
+        // Encolamos estilos y scripts solo en el frontend
+        // Usamos jQuery que ya viene con WP
+        wp_enqueue_script( 'jquery' );
+    }
+
+    public function render_chat_widget() {
+        ?>
+        <div id="inmo-chat-wrapper">
+            <button id="inmo-chat-toggle">💬 Asistente IA</button>
+            
+            <div id="inmo-chat-box" style="display:none;">
+                <div class="inmo-chat-header">
+                    <span>🏠 InmoBot</span>
+                    <button id="inmo-chat-close">✖</button>
+                </div>
+                <div id="inmo-chat-messages">
+                    <div class="inmo-msg bot">¡Hola! Soy tu asistente inmobiliario. ¿Buscas comprar o alquilar?</div>
+                </div>
+                <div class="inmo-chat-input-area">
+                    <input type="text" id="inmo-chat-input" placeholder="Escribe aquí... (Ej: Busco alquiler en Pocitos)">
+                    <button id="inmo-chat-send">➤</button>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            #inmo-chat-wrapper { position: fixed; bottom: 20px; right: 20px; z-index: 9999; font-family: sans-serif; }
+            #inmo-chat-toggle { background: #2271b1; color: white; border: none; padding: 15px 25px; border-radius: 30px; cursor: pointer; font-size: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: 0.3s; }
+            #inmo-chat-toggle:hover { background: #135e96; transform: scale(1.05); }
+            
+            #inmo-chat-box { width: 350px; height: 500px; background: white; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.3); display: flex; flex-direction: column; overflow: hidden; position: absolute; bottom: 70px; right: 0; }
+            
+            .inmo-chat-header { background: #2271b1; color: white; padding: 15px; display: flex; justify-content: space-between; font-weight: bold; }
+            #inmo-chat-close { background: none; border: none; color: white; cursor: pointer; font-size: 18px; }
+            
+            #inmo-chat-messages { flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9; display: flex; flex-direction: column; gap: 10px; }
+            
+            .inmo-msg { max-width: 80%; padding: 10px; border-radius: 10px; font-size: 14px; line-height: 1.4; }
+            .inmo-msg.bot { background: #e0e0e0; align-self: flex-start; border-bottom-left-radius: 0; }
+            .inmo-msg.user { background: #2271b1; color: white; align-self: flex-end; border-bottom-right-radius: 0; }
+            
+            .inmo-chat-input-area { padding: 10px; border-top: 1px solid #ddd; display: flex; gap: 5px; background: white; }
+            #inmo-chat-input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; outline: none; }
+            #inmo-chat-send { background: #2271b1; color: white; border: none; padding: 0 15px; border-radius: 5px; cursor: pointer; }
+            
+            /* Animación de carga */
+            .typing-indicator { font-style: italic; color: #888; font-size: 12px; margin-left: 10px; display: none; }
+        </style>
+
+        <script type="text/javascript">
+        jQuery(document).ready(function($){
+            var webhookUrl = '<?php echo $this->n8n_webhook_url; ?>';
+            
+            // Abrir/Cerrar
+            $('#inmo-chat-toggle, #inmo-chat-close').click(function(){
+                $('#inmo-chat-box').fadeToggle();
+            });
+
+            // Enviar Mensaje
+            function sendMessage() {
+                var text = $('#inmo-chat-input').val().trim();
+                if(text === '') return;
+
+                // 1. Mostrar mensaje usuario
+                $('#inmo-chat-messages').append('<div class="inmo-msg user">'+text+'</div>');
+                $('#inmo-chat-input').val('');
+                scrollToBottom();
+
+                // 2. Mostrar "Escribiendo..."
+                $('#inmo-chat-messages').append('<div class="inmo-msg bot typing">Escribiendo...</div>');
+                scrollToBottom();
+
+                // 3. Enviar a n8n
+                $.ajax({
+                    url: webhookUrl,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ 
+                        message: text,
+                        sessionId: 'session_' + Math.random().toString(36).substr(2, 9) // ID sesión simple
+                    }),
+                    success: function(response) {
+                        $('.typing').remove();
+                        // Asumimos que n8n devuelve { "output": "Texto de respuesta" }
+                        var botText = response.output || "Lo siento, hubo un error de conexión.";
+                        $('#inmo-chat-messages').append('<div class="inmo-msg bot">'+formatText(botText)+'</div>');
+                        scrollToBottom();
+                    },
+                    error: function() {
+                        $('.typing').remove();
+                        $('#inmo-chat-messages').append('<div class="inmo-msg bot" style="background:#ffcccc;">Error al conectar con el servidor.</div>');
+                    }
+                });
+            }
+
+            // Click botón enviar
+            $('#inmo-chat-send').click(sendMessage);
+            
+            // Enter en input
+            $('#inmo-chat-input').keypress(function(e){
+                if(e.which == 13) sendMessage();
+            });
+
+            function scrollToBottom() {
+                var div = document.getElementById("inmo-chat-messages");
+                div.scrollTop = div.scrollHeight;
+            }
+
+            function formatText(text) {
+                // Convertir saltos de línea a <br>
+                return text.replace(/\n/g, "<br>");
+            }
+        });
+        </script>
+        <?php
+    }
+}
+
+new Inmo_Chat_Frontend();
