@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 class Inmo_App_Frontend {
 
     // 🔴 PEGA AQUÍ TU WEBHOOK DE N8N
-    private $n8n_webhook = 'https://TU-N8N-URL/webhook/chat-inmobiliario'; 
+    private $n8n_webhook = 'https://n8n.srv1048574.hstgr.cloud/webhook-test/chat-inmobiliario'; 
 
     public function __construct() {
         add_shortcode( 'inmo_app', array( $this, 'render_app' ) );
