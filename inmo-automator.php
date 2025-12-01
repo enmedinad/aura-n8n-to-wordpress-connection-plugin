@@ -1,30 +1,26 @@
 <?php
 /**
  * Plugin Name: InmoAutomator Core
- * Description: Sistema de gestión inmobiliaria conectado con n8n (Propiedades, Dueños, Clientes).
- * Version: 1.0
- * Author: Tu Nombre
+ * Description: Sistema de gestión inmobiliaria conectado con n8n.
+ * Version: 1.2
  */
 
-if ( ! defined( 'ABSPATH' ) ) exit; // Seguridad
+if ( ! defined( 'ABSPATH' ) ) exit;
 
-// --- IMPORTANTE: CARGAR ARCHIVOS AQUÍ (FUERA DE LA CLASE) ---
-// Verificamos que los archivos existan antes de cargarlos para evitar errores si falta alguno
+// Cargar dependencias de forma segura
+require_once plugin_dir_path( __FILE__ ) . 'seeder.php';
 if ( file_exists( plugin_dir_path( __FILE__ ) . 'inmo-metaboxes.php' ) ) {
     require_once plugin_dir_path( __FILE__ ) . 'inmo-metaboxes.php';
 }
-
 if ( file_exists( plugin_dir_path( __FILE__ ) . 'inmo-api.php' ) ) {
     require_once plugin_dir_path( __FILE__ ) . 'inmo-api.php';
 }
-// ------------------------------------------------------------
 
 class InmoAutomator {
 
     public function __construct() {
         add_action( 'init', array( $this, 'register_cpts' ) );
-        add_action( 'init', array( $this, 'register_taxonomies' ) );
-        // Forzar Editor Clásico para Propiedades
+        // Taxonomías eliminadas según solicitud
         add_filter( 'use_block_editor_for_post_type', array( $this, 'disable_gutenberg_propiedades' ), 10, 2 );
     }
 
@@ -35,7 +31,7 @@ class InmoAutomator {
             'public' => true,
             'has_archive' => true,
             'supports' => array( 'title', 'editor', 'thumbnail', 'custom-fields' ),
-            'show_in_rest' => true, // Necesario para n8n
+            'show_in_rest' => true,
             'menu_icon' => 'dashicons-admin-home',
         ));
 
@@ -60,24 +56,8 @@ class InmoAutomator {
         ));
     }
 
-    public function register_taxonomies() {
-        // Amenities (Cocina, Living, etc.)
-        register_taxonomy( 'amenities', 'propiedad', array(
-            'label' => 'Amenities',
-            'hierarchical' => true, // Como categorías
-            'show_in_rest' => true,
-        ));
-
-        // Condiciones del Dueño (No mascotas, etc.)
-        register_taxonomy( 'condiciones_dueno', 'propiedad', array(
-            'label' => 'Condiciones Dueño',
-            'hierarchical' => true,
-            'show_in_rest' => true,
-        ));
-    }
-
     public function disable_gutenberg_propiedades( $current_status, $post_type ) {
-        if ( $post_type === 'propiedad' ) return false; // Desactiva Gutenberg
+        if ( $post_type === 'propiedad' ) return false;
         return $current_status;
     }
 }
