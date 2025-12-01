@@ -3,10 +3,21 @@
  * Plugin Name: InmoAutomator Core
  * Description: Sistema de gestión inmobiliaria conectado con n8n (Propiedades, Dueños, Clientes).
  * Version: 1.0
- * Author: Enzo Medina
+ * Author: Tu Nombre
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit; // Seguridad
+
+// --- IMPORTANTE: CARGAR ARCHIVOS AQUÍ (FUERA DE LA CLASE) ---
+// Verificamos que los archivos existan antes de cargarlos para evitar errores si falta alguno
+if ( file_exists( plugin_dir_path( __FILE__ ) . 'inmo-metaboxes.php' ) ) {
+    require_once plugin_dir_path( __FILE__ ) . 'inmo-metaboxes.php';
+}
+
+if ( file_exists( plugin_dir_path( __FILE__ ) . 'inmo-api.php' ) ) {
+    require_once plugin_dir_path( __FILE__ ) . 'inmo-api.php';
+}
+// ------------------------------------------------------------
 
 class InmoAutomator {
 
@@ -23,7 +34,7 @@ class InmoAutomator {
             'labels' => array( 'name' => 'Propiedades', 'singular_name' => 'Propiedad' ),
             'public' => true,
             'has_archive' => true,
-            'supports' => array( 'title', 'editor', 'thumbnail', 'custom-fields' ), // Editor activa el clásico
+            'supports' => array( 'title', 'editor', 'thumbnail', 'custom-fields' ),
             'show_in_rest' => true, // Necesario para n8n
             'menu_icon' => 'dashicons-admin-home',
         ));
@@ -31,9 +42,9 @@ class InmoAutomator {
         // 2. CPT DUEÑOS
         register_post_type( 'dueno', array(
             'labels' => array( 'name' => 'Dueños', 'singular_name' => 'Dueño' ),
-            'public' => false, // No necesitan URL pública frontend por lo general
+            'public' => false, 
             'show_ui' => true,
-            'supports' => array( 'title' ), // El nombre va en el título
+            'supports' => array( 'title' ),
             'show_in_rest' => true,
             'menu_icon' => 'dashicons-businessperson',
         ));
@@ -43,22 +54,17 @@ class InmoAutomator {
             'labels' => array( 'name' => 'Clientes / Leads', 'singular_name' => 'Cliente' ),
             'public' => false,
             'show_ui' => true,
-            'supports' => array( 'title' ), // Nombre del cliente en título
+            'supports' => array( 'title' ),
             'show_in_rest' => true,
             'menu_icon' => 'dashicons-groups',
         ));
     }
 
-    // ... dentro de inmo-automator.php
-    require_once plugin_dir_path( __FILE__ ) . 'inmo-metaboxes.php';
-    require_once plugin_dir_path( __FILE__ ) . 'inmo-api.php'; // <--- AGREGAR ESTO
-    // ...
-
     public function register_taxonomies() {
         // Amenities (Cocina, Living, etc.)
         register_taxonomy( 'amenities', 'propiedad', array(
             'label' => 'Amenities',
-            'hierarchical' => true, // Como categorías (checkboxes)
+            'hierarchical' => true, // Como categorías
             'show_in_rest' => true,
         ));
 
@@ -75,7 +81,5 @@ class InmoAutomator {
         return $current_status;
     }
 }
-
-
 
 new InmoAutomator();
