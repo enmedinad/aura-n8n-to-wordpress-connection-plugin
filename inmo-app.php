@@ -75,7 +75,7 @@ class Inmo_Chat_Widget {
             .name { font-size: 14px; font-weight: bold; line-height: 1.2; }
             .name small { font-weight: normal; opacity: 0.8; font-size: 12px; }
             #inmo-close { cursor: pointer; font-size: 18px; opacity: 0.7; }
-            #inmo-messages { flex: 1; background: #E5DDD5; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+            #inmo-messages { flex: 1; height: 345px; background: #E5DDD5; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
             .msg { max-width: 80%; padding: 8px 12px; border-radius: 8px; font-size: 14px; line-height: 1.4; word-wrap: break-word; }
             .msg.bot { background: white; align-self: flex-start; border-top-left-radius: 0; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
             .msg.user { background: #DCF8C6; align-self: flex-end; border-top-right-radius: 0; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
