@@ -1,192 +1,192 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-class Inmo_App_Frontend {
+class Inmo_Chat_Widget {
 
-    // 🔴 PEGA AQUÍ TU WEBHOOK DE N8N
+    // 🔴 URL de n8n (Asegúrate que sea la correcta /webhook/ o /webhook-test/)
     private $n8n_webhook = 'https://n8n.srv1048574.hstgr.cloud/webhook-test/chat-inmobiliario'; 
 
     public function __construct() {
-        add_shortcode( 'inmo_app', array( $this, 'render_app' ) );
+        add_action( 'wp_footer', array( $this, 'render_widget' ) );
         add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+        add_action( 'wp_ajax_inmo_chat_proxy', array( $this, 'chat_proxy_handler' ) );
+        add_action( 'wp_ajax_nopriv_inmo_chat_proxy', array( $this, 'chat_proxy_handler' ) );
     }
 
     public function enqueue_assets() {
-        // Registramos scripts pero solo los cargamos si se usa el shortcode (optimización)
-        wp_register_script( 'inmo-app-js', false );
-        wp_register_style( 'inmo-app-css', false );
+        wp_enqueue_script( 'jquery' );
     }
 
-    public function render_app() {
-        wp_enqueue_script( 'jquery' );
+    public function chat_proxy_handler() {
+        $json = file_get_contents('php://input');
+        $data = json_decode($json, true);
         
-        // HTML DE LA APP
-        ob_start();
+        $response = wp_remote_post( $this->n8n_webhook, array(
+            'headers' => array('Content-Type' => 'application/json'),
+            'body'    => json_encode($data), 
+            'method'  => 'POST', 
+            'timeout' => 45
+        ));
+
+        if ( is_wp_error( $response ) ) {
+            wp_send_json_error( array( 'message' => 'Error de conexión con n8n' ) );
+        } else {
+            echo wp_remote_retrieve_body( $response );
+        }
+        wp_die();
+    }
+
+    public function render_widget() {
+        // URL para el JS
+        $proxy_url = admin_url('admin-ajax.php?action=inmo_chat_proxy');
         ?>
-        <div class="inmo-app-container">
+        
+        <div id="inmo-widget-container">
+            <div id="inmo-launcher"><span class="icon">💬</span></div>
             
-            <div class="inmo-col-chat">
-                <div class="inmo-chat-header">
-                    <h3>🤖 Asistente Inmobiliario</h3>
-                    <span class="status-dot"></span> En línea
+            <div id="inmo-window">
+                <div class="inmo-header">
+                    <div class="agent-info">
+                        <div class="avatar">🤖</div>
+                        <div class="name">Asistente Inmobiliario<br><small>En línea</small></div>
+                    </div>
+                    <div id="inmo-close">✕</div>
                 </div>
                 
-                <div id="inmo-messages" class="inmo-messages-area">
-                    <div class="msg bot">
-                        Hola, soy la IA de Inmouru. ¿Buscas comprar, alquilar o vender una propiedad hoy?
-                    </div>
+                <div id="inmo-messages">
+                    <div class="msg bot">Hola 👋, soy la IA de Inmouru. ¿Buscas comprar o alquilar hoy?</div>
                 </div>
 
-                <div class="inmo-input-area">
-                    <input type="text" id="inmo-input" placeholder="Ej: Busco alquiler en Pocitos, 2 dorm..." autocomplete="off">
-                    <button id="inmo-send">Enviar ➤</button>
+                <div class="inmo-input-zone">
+                    <input type="text" id="inmo-input" placeholder="Escribe aquí..." autocomplete="off">
+                    <button id="inmo-send">➤</button>
                 </div>
             </div>
-
-            <div class="inmo-col-results">
-                <div class="results-header">
-                    <h3>📋 Propiedades Destacadas</h3>
-                </div>
-                <div id="inmo-results-grid" class="inmo-grid">
-                    <div class="empty-state">
-                        <p>👋 Las recomendaciones de la IA aparecerán aquí.</p>
-                    </div>
-                </div>
-            </div>
-
         </div>
 
         <style>
-            .inmo-app-container { display: flex; flex-wrap: wrap; gap: 20px; background: #f4f4f4; padding: 20px; border-radius: 12px; font-family: 'Segoe UI', sans-serif; min-height: 600px; }
+            #inmo-widget-container { position: fixed; bottom: 20px; right: 20px; z-index: 999999; font-family: 'Segoe UI', sans-serif; }
+            #inmo-launcher { width: 60px; height: 60px; background: #25D366; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: transform 0.3s; }
+            #inmo-launcher:hover { transform: scale(1.1); }
+            #inmo-window { display: none; width: 350px; height: 500px; background: white; border-radius: 15px; position: absolute; bottom: 80px; right: 0; box-shadow: 0 5px 25px rgba(0,0,0,0.2); flex-direction: column; overflow: hidden; border: 1px solid #eee; }
+            .inmo-header { background: #009a22; color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+            .agent-info { display: flex; gap: 10px; align-items: center; }
+            .avatar { width: 35px; height: 35px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+            .name { font-size: 14px; font-weight: bold; line-height: 1.2; }
+            .name small { font-weight: normal; opacity: 0.8; font-size: 12px; }
+            #inmo-close { cursor: pointer; font-size: 18px; opacity: 0.7; }
+            #inmo-messages { flex: 1; background: #E5DDD5; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+            .msg { max-width: 80%; padding: 8px 12px; border-radius: 8px; font-size: 14px; line-height: 1.4; word-wrap: break-word; }
+            .msg.bot { background: white; align-self: flex-start; border-top-left-radius: 0; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
+            .msg.user { background: #DCF8C6; align-self: flex-end; border-top-right-radius: 0; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
+            .msg.system { align-self: center; font-size: 11px; color: #888; background: rgba(255,255,255,0.8); padding: 2px 8px; border-radius: 10px; margin: 5px 0; }
+            .inmo-input-zone { background: #f0f0f0; padding: 10px; display: flex; gap: 10px; }
+            #inmo-input { flex: 1; border: none; padding: 10px; border-radius: 20px; outline: none; }
+            #inmo-send { background: #009a22; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
             
-            /* Chat Column */
-            .inmo-col-chat { flex: 1; min-width: 300px; background: #fff; border-radius: 12px; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: hidden; }
-            .inmo-chat-header { background: #2271b1; color: white; padding: 15px; display: flex; align-items: center; gap: 10px; }
-            .inmo-chat-header h3 { margin: 0; font-size: 1.1em; color: white; }
-            .status-dot { width: 10px; height: 10px; background: #00ff44; border-radius: 50%; display: inline-block; box-shadow: 0 0 5px #00ff44; }
-            
-            .inmo-messages-area { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; background: #f9f9f9; max-height: 500px; }
-            .msg { padding: 12px 16px; border-radius: 12px; max-width: 85%; line-height: 1.4; font-size: 15px; }
-            .msg.bot { background: #eef2f5; color: #333; align-self: flex-start; border-bottom-left-radius: 2px; }
-            .msg.user { background: #2271b1; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
-            .msg.system { background: transparent; color: #888; font-size: 0.85em; text-align: center; align-self: center; font-style: italic; }
-
-            .inmo-input-area { padding: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; background: white; }
-            #inmo-input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 6px; outline: none; transition: 0.3s; }
-            #inmo-input:focus { border-color: #2271b1; }
-            #inmo-send { background: #2271b1; color: white; border: none; padding: 0 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-            #inmo-send:hover { background: #1a5c8e; }
-
-            /* Results Column */
-            .inmo-col-results { flex: 1.5; min-width: 300px; display: flex; flex-direction: column; }
-            .results-header h3 { margin: 0 0 15px 0; color: #444; }
-            .inmo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; overflow-y: auto; max-height: 550px; }
-            
-            /* Cards */
-            .inmo-card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: 0.3s; border: 1px solid #eee; }
-            .inmo-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-            .inmo-card-img { height: 140px; background: #ddd; background-size: cover; background-position: center; }
-            .inmo-card-body { padding: 12px; }
-            .inmo-card-price { color: #2271b1; font-weight: bold; font-size: 1.1em; }
-            .inmo-card-title { font-size: 0.95em; font-weight: 600; margin: 5px 0; color: #333; }
-            .inmo-card-meta { font-size: 0.85em; color: #777; display: flex; gap: 10px; }
-            .empty-state { text-align: center; color: #999; margin-top: 50px; grid-column: 1 / -1; }
+            /* Cards dentro del chat */
+            .inmo-mini-card { background: white; border-radius: 8px; overflow: hidden; margin-top: 5px; border: 1px solid #ddd; width: 100%; max-width: 250px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: block; text-decoration: none; color: inherit; }
+            .inmo-card-img { width: 100%; height: 120px; background-size: cover; background-position: center; }
+            .inmo-card-data { padding: 10px; }
+            .inmo-card-price { color: #009a22; font-weight: bold; font-size: 15px; }
+            .inmo-card-title { font-size: 13px; font-weight: 600; margin: 3px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333; }
+            .inmo-card-btn { display: block; text-align: center; background: #f0f0f0; color: #333; text-decoration: none; padding: 5px; font-size: 12px; margin-top: 5px; border-radius: 4px; font-weight: 600; }
         </style>
 
         <script type="text/javascript">
-        jQuery(document).ready(function($){
-            var webhookUrl = '<?php echo $this->n8n_webhook; ?>';
-            var $chatBox = $('#inmo-messages');
-
-            function addMsg(text, type) {
-                var cleanText = text.replace(/\n/g, "<br>");
-                $chatBox.append('<div class="msg '+type+'">'+cleanText+'</div>');
-                $chatBox.scrollTop($chatBox[0].scrollHeight);
-            }
-
-            // Simular carga de tarjeta (Para probar sin N8N al inicio)
-            function renderProperties(props) {
-                var $grid = $('#inmo-results-grid');
-                $grid.empty();
-                
-                if(!props || props.length === 0) {
-                    $grid.html('<div class="empty-state">No se encontraron propiedades exactas.</div>');
-                    return;
+        
+        // A. DEFINIR FUNCIÓN GLOBALMENTE PRIMERO (Evita el ReferenceError)
+        window.triggerInmoChat = function(msg) {
+            // Intenta usar jQuery si está cargado
+            if (typeof jQuery !== 'undefined') {
+                var $ = jQuery;
+                if ( $('#inmo-window').is(':hidden') ) {
+                    $('#inmo-window').fadeIn(200);
                 }
+                setTimeout(function(){
+                    $('#inmo-input').val(msg);
+                    $('#inmo-send').click();
+                }, 300);
+            } else {
+                console.error("jQuery aún no ha cargado.");
+            }
+        };
 
-                props.forEach(function(p) {
-                    var html = `
-                    <div class="inmo-card">
-                        <div class="inmo-card-img" style="background-image: url('${p.img || 'https://via.placeholder.com/300'}');"></div>
-                        <div class="inmo-card-body">
-                            <div class="inmo-card-price">${p.price}</div>
-                            <div class="inmo-card-title">${p.title}</div>
-                            <div class="inmo-card-meta">
-                                <span>🛏️ ${p.dorm}</span>
-                                <span>🚿 ${p.banos}</span>
-                            </div>
-                            <a href="${p.link}" target="_blank" style="display:block; margin-top:10px; text-align:center; background:#f0f6fc; color:#2271b1; padding:5px; text-decoration:none; border-radius:4px; font-size:0.9em;">Ver Detalles</a>
-                        </div>
-                    </div>
-                    `;
-                    $grid.append(html);
-                });
+        // B. LÓGICA DEL CHAT (DENTRO DE DOCUMENT READY)
+        jQuery(document).ready(function($){
+            var proxyUrl = '<?php echo $proxy_url; ?>';
+            
+            // Abrir/Cerrar
+            $('#inmo-launcher, #inmo-close').click(function(){
+                $('#inmo-window').fadeToggle(200);
+            });
+
+            // Agregar mensaje al historial
+            function addMsg(html, type) {
+                $('#inmo-messages').append('<div class="msg '+type+'">'+html+'</div>');
+                var div = document.getElementById("inmo-messages");
+                div.scrollTop = div.scrollHeight;
             }
 
-            $('#inmo-send').click(function(){
+            // Renderizar tarjetas de propiedades
+            function renderCards(props) {
+                if(!props || props.length === 0) return;
+                var cardsHtml = '';
+                props.forEach(function(p){
+                    var title = p.title || "Propiedad";
+                    var price = p.precio || p.price || "Consultar";
+                    var img = p.imagen || 'https://via.placeholder.com/300x200?text=Sin+Foto';
+                    var link = p.link || '/?post_type=propiedad&p=' + (p.id || p.ID); // Fallback
+
+                    cardsHtml += `
+                    <a href="${link}" class="inmo-mini-card">
+                        <div class="inmo-card-img" style="background-image: url('${img}');"></div>
+                        <div class="inmo-card-data">
+                            <div class="inmo-card-price">$ ${price}</div>
+                            <div class="inmo-card-title">${title}</div>
+                            <span class="inmo-card-btn">Ver Detalles</span>
+                        </div>
+                    </a>`;
+                });
+                addMsg(cardsHtml, 'bot');
+            }
+
+            // Enviar mensaje a N8N
+            function send() {
                 var txt = $('#inmo-input').val().trim();
                 if(txt === '') return;
 
-                addMsg(txt, 'user');
+                addMsg(txt.replace(/\n/g, '<br>'), 'user');
                 $('#inmo-input').val('');
-                addMsg('Pensando...', 'system');
+                $('#inmo-messages').append('<div class="msg system typing">Escribiendo...</div>');
 
-                // CONEXIÓN CON N8N
                 $.ajax({
-                    url: webhookUrl,
-                    method: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify({ message: txt, sessionId: 'sess_'+Math.floor(Math.random()*10000) }),
+                    url: proxyUrl, method: 'POST', contentType: 'application/json',
+                    data: JSON.stringify({ message: txt, sessionId: 'sess_'+Math.floor(Math.random()*9999) }),
                     success: function(res) {
-                        $('.msg.system').remove();
+                        $('.typing').remove();
+                        // 1. Texto
+                        var text = res.output || res.text;
+                        if(text) addMsg(text.replace(/\n/g, '<br>'), 'bot');
+                        else if(!res.properties) addMsg("Error: Respuesta vacía de IA.", 'system');
                         
-                        // 🔍 DEBUG: Mira la consola del navegador (F12) para ver qué llegó
-                        console.log("Respuesta recibida de n8n:", res); 
-
-                        // Intentamos encontrar el texto en varias variables posibles
-                        var botText = res.output || res.text || res.response || res.message;
-
-                        // Si es un objeto complejo (error raro), lo convertimos a texto
-                        if (typeof botText === 'object') {
-                            botText = JSON.stringify(botText);
-                        }
-
-                        // Si encontramos texto, lo mostramos
-                        if (botText) {
-                            addMsg(botText, 'bot');
-                        } else {
-                            // Si llegó vacío, avisamos
-                            addMsg("Recibí una respuesta vacía de la IA. Revisa la consola (F12).", 'system');
-                        }
-                        
-                        // Renderizar propiedades si vienen
-                        if(res.properties && Array.isArray(res.properties)) {
-                            renderProperties(res.properties);
-                        }
+                        // 2. Propiedades
+                        if(res.properties && Array.isArray(res.properties)) renderCards(res.properties);
                     },
-                    error: function() {
-                        $('.msg.system').remove();
-                        addMsg('Error de conexión con el servidor IA.', 'system');
+                    error: function(err) {
+                        $('.typing').remove();
+                        addMsg('Error de conexión.', 'system');
+                        console.log(err);
                     }
                 });
-            });
+            }
 
-            $('#inmo-input').keypress(function(e){ if(e.which==13) $('#inmo-send').click(); });
+            $('#inmo-send').click(send);
+            $('#inmo-input').keypress(function(e){ if(e.which==13) send(); });
         });
         </script>
         <?php
-        return ob_get_clean();
     }
 }
 
-new Inmo_App_Frontend();
+new Inmo_Chat_Widget();
