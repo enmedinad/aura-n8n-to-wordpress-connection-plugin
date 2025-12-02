@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 class Inmo_Chat_Widget {
 
     // 🔴 URL de n8n (Asegúrate que sea la correcta /webhook/ o /webhook-test/)
-    private $n8n_webhook = 'https://n8n.srv1048574.hstgr.cloud/webhook-test/chat-inmobiliario'; 
+    private $n8n_webhook = 'https://n8n.srv1048574.hstgr.cloud/webhook/chat-inmobiliario'; 
 
     public function __construct() {
         add_action( 'wp_footer', array( $this, 'render_widget' ) );
