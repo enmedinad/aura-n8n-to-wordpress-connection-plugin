@@ -150,10 +150,26 @@ class Inmo_App_Frontend {
                     success: function(res) {
                         $('.msg.system').remove();
                         
-                        // 1. Respuesta Texto
-                        if(res.output) addMsg(res.output, 'bot');
+                        // 🔍 DEBUG: Mira la consola del navegador (F12) para ver qué llegó
+                        console.log("Respuesta recibida de n8n:", res); 
+
+                        // Intentamos encontrar el texto en varias variables posibles
+                        var botText = res.output || res.text || res.response || res.message;
+
+                        // Si es un objeto complejo (error raro), lo convertimos a texto
+                        if (typeof botText === 'object') {
+                            botText = JSON.stringify(botText);
+                        }
+
+                        // Si encontramos texto, lo mostramos
+                        if (botText) {
+                            addMsg(botText, 'bot');
+                        } else {
+                            // Si llegó vacío, avisamos
+                            addMsg("Recibí una respuesta vacía de la IA. Revisa la consola (F12).", 'system');
+                        }
                         
-                        // 2. Si n8n devuelve propiedades (JSON Array en campo 'properties')
+                        // Renderizar propiedades si vienen
                         if(res.properties && Array.isArray(res.properties)) {
                             renderProperties(res.properties);
                         }
